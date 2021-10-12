@@ -127,7 +127,7 @@ ganadores <- ganadores_gral %>%
 library(sf)
 
 # Datos del circuito electoral
-circuitos <- sf::read_sf("datos/circuitos-electorales/circuitos-electorales.shp")
+circuitos <- sf::read_sf("https://mapa2.electoral.gov.ar/geoserver/wfs?service=WFS&version=1.0.0&request=GetFeature&authkey=e9f076d6c870f989d9da317004dbc174&typeName=descargas:circuito_02&maxFeatures=2000&outputFormat=application%2Fjson")
 
 
 library(ggplot2)
