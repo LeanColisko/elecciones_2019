@@ -1,5 +1,3 @@
-
-
 # 1 - Leemos los datos -------------------------- 
 # electorales para la tercera seccion electoral
 datos <- read.csv("https://raw.githubusercontent.com/LeanColisko/elecciones_2019/main/datos/elecciones_2019_datos_tercera_seccion.csv", fileEncoding = "UTF-8")
@@ -53,3 +51,21 @@ datos_clean %>%
   mutate(`% PASO` = PASO_x_AGRUP / sum(PASO_x_AGRUP) * 100,
          `% GRAL` = GRAL_x_AGRUP / sum(GRAL_x_AGRUP) * 100)
 
+
+# Vamos a ver los resultados para Avellaneda
+datos_clean %>% 
+  filter(SECCION == 'Avellaneda') %>% 
+  group_by(NOMBRE_AGRUPACION) %>% 
+  summarise(PASO_x_AGRUP = sum(PASO),
+            GRAL_x_AGRUP = sum(GRAL)) %>% 
+  mutate(`% PASO` = PASO_x_AGRUP / sum(PASO_x_AGRUP) * 100,
+         `% GRAL` = GRAL_x_AGRUP / sum(GRAL_x_AGRUP) * 100)
+
+# Datos para La Matanza
+datos_clean %>% 
+  filter(SECCION == 'La Matanza') %>% 
+  group_by(NOMBRE_AGRUPACION) %>% 
+  summarise(PASO_x_AGRUP = sum(PASO),
+            GRAL_x_AGRUP = sum(GRAL)) %>% 
+  mutate(`% PASO` = PASO_x_AGRUP / sum(PASO_x_AGRUP) * 100,
+         `% GRAL` = GRAL_x_AGRUP / sum(GRAL_x_AGRUP) * 100)
