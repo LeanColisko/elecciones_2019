@@ -1,0 +1,240 @@
+---
+title: "Datos electorales"
+output: html_notebook
+---
+
+# 1 - Leemos los datos
+
+Datos electorales para la tercera seccion electoral en la elección 2019.
+
+
+```{r}
+datos <- read.csv("https://raw.githubusercontent.com/LeanColisko/elecciones_2019/main/datos/elecciones_2019_datos_tercera_seccion.csv", fileEncoding = "UTF-8")
+
+head(datos)
+```
+
+
+
+# 2 - Funciones exploratorias
+
+Aplicamos funciones exploratorias para conocer un poco más de nuestra estructura de datos.
+
+Nombre de columnas
+```{r}
+names(datos)
+```
+
+Estructura de datos
+```{r}
+str(datos)
+```
+Resumen de las variables
+```{r}
+summary(datos)
+```
+
+Primeras 6 lineas de datos
+
+```{r}
+head(datos)
+```
+
+Últimas 6 lineas de datos
+
+```{r}
+tail(datos)
+```
+
+
+# 3 - Modificamos los datos
+
+Hay dos columnas que no nos hacen falta: PROVINCIA y CATEGORÍA
+Los valores de estas columnas son siempre los mismos y son previamente conocidos por los filtros que aplicamos. Por lo tanto vamos a eliminar estas dos columnas.
+
+Como vamos a trabajar con dplyr: primero activamos la librería
+
+```{r}
+# Activamos la librería
+library(dplyr)
+
+#Eliminamos las columnas que no necesitamos
+datos_clean <- datos %>% 
+  select(-c(PROVINCIA, NOMBRE_CATEGORIA))
+```
+
+Ahora tenemos 5 variables:
+
+- Sección
+- Circuito
+- NOMBRE_AGRUPACION
+- PASO
+- GRAL
+
+
+# 4 - Resultados por agrupación
+
+Con los datos limpios vamos a ver la suma de votos de cada agrupación.
+
+```{r}
+datos_clean %>% 
+  group_by(NOMBRE_AGRUPACION) %>% 
+  summarise(PASO_x_AGRUP = sum(PASO),
+            GRAL_x_AGRUP = sum(GRAL)) %>% 
+  mutate(`% PASO` = PASO_x_AGRUP / sum(PASO_x_AGRUP) * 100,
+         `% GRAL` = GRAL_x_AGRUP / sum(GRAL_x_AGRUP) * 100)
+```
+
+Como ejemplo mostramos los resultados para Avellaneda.
+
+```{r}
+datos_clean %>% 
+  filter(SECCION == 'Avellaneda') %>% 
+  group_by(NOMBRE_AGRUPACION) %>% 
+  summarise(PASO_x_AGRUP = sum(PASO),
+            GRAL_x_AGRUP = sum(GRAL)) %>% 
+  mutate(`% PASO` = PASO_x_AGRUP / sum(PASO_x_AGRUP) * 100,
+         `% GRAL` = GRAL_x_AGRUP / sum(GRAL_x_AGRUP) * 100)
+```
+
+
+Datos para todas las secciones. Lo guardamos en un nuevo objeto. Creamos nuevas variables para cada sección, vemos la cantidad de votos que sacaron cada agrupación. Además agregamos el porcentaje de votos que sacó cada agrupación en cada una de las secciones, para la elección PASO y GENERAL.
+Finalmente agregamos una variable que indique la posición que ocupó cada agrupación en la elección general. De esta manera podemos ver quien ganó en la sección.
+
+```{r}
+resultados <- datos_clean %>% 
+  group_by(SECCION, NOMBRE_AGRUPACION) %>% 
+  summarise(PASO_x_AGRUP = sum(PASO),
+            GRAL_x_AGRUP = sum(GRAL)) %>% 
+  mutate(`% PASO` = PASO_x_AGRUP / sum(PASO_x_AGRUP) * 100,
+         `% GRAL` = GRAL_x_AGRUP / sum(GRAL_x_AGRUP) * 100) %>% 
+  arrange(SECCION, desc(`% GRAL`)) %>% 
+  mutate(Puestos_GRAL = row_number()) %>% 
+  arrange(SECCION, desc(`% PASO`)) %>% 
+  mutate(Puestos_PASO = row_number())
+```
+
+
+Mostramos los resultados de quienes salieron primeros en la elección GENERAL. 
+
+```{r}
+resultados %>%
+  filter(Puestos_GRAL==1)
+```
+
+
+# 5 - Modificar la estructura de los datos
+
+Queremos construir una tabla con los datosa nivel de circuito. Cada fila representa un circuito y los circuitos no están duplicados
+Esto lo podemos hacer pivoteando con las funciones de tidyr. En particular con las funciones de pivoteo de datos *pivot_wider* y *pivot_longer*.
+
+```{r}
+library(tidyr)
+
+datos_circuito <- datos_clean %>% 
+  pivot_wider(id_cols = c(SECCION, Circuito), 
+              names_from = NOMBRE_AGRUPACION,
+              names_sep = " ; ",
+              values_from = c(PASO, GRAL))
+```
+
+
+Ahora vamos a hacer una tabla que para cada circuito nos diga quien ganó la elección PASO y General. Esto después podemos visualizarlo en un mapa.
+
+```{r}
+ganadores_gral <- datos_clean %>% 
+  filter(GRAL != 0) %>% 
+  group_by(SECCION, Circuito) %>% 
+  arrange(Circuito, desc(GRAL)) %>% 
+  mutate(POSICION_GRALES = row_number()) %>%
+  ungroup() %>% 
+  filter(POSICION_GRALES == 1) %>% 
+  select(SECCION, Circuito, NOMBRE_AGRUPACION) %>% 
+  rename(GANADOR_GENERAL = NOMBRE_AGRUPACION)
+
+ganadores_paso <- datos_clean %>% 
+  filter(PASO != 0) %>% 
+  group_by(SECCION, Circuito) %>% 
+  arrange(Circuito, desc(PASO)) %>% 
+  mutate(POSICION_PASO = row_number()) %>%
+  ungroup() %>% 
+  filter(POSICION_PASO == 1) %>% 
+  select(SECCION, Circuito, NOMBRE_AGRUPACION) %>% 
+  rename(GANADOR_PASO = NOMBRE_AGRUPACION)
+
+ganadores <- ganadores_gral %>% 
+  left_join(ganadores_paso)
+
+head(ganadores)
+```
+
+
+# 6 - Lectura de datos geográficos
+
+
+```{r}
+library(sf)
+
+# Datos del circuito electoral
+circuitos <- sf::read_sf("datos/circuitos_BsAs.geojson")
+
+head(circuitos)
+```
+
+Con la biblioteca ggplot hacemos un gráfico con los datos que cargamos. Como vemos, encontramos un mapa de la provincia de Buenos Aires, donde cada poligono es un circuito electoral. Nuestra tarea es utilizar esta información y completarla con los resultados electorales para visualizar en forma rápida los ganadores por cada uno de los circuitos elecorales.
+
+```{r}
+library(ggplot2)
+ggplot(data = circuitos) +
+  geom_sf()
+```
+
+# 7 - Unión de datos geográficos y electorales
+
+Unimos los datos de los resultados electorales de cada circuito con los datos geográficos.
+```{r}
+circuitos <- circuitos %>% 
+  left_join(ganadores, by = c("circuito"="Circuito")) %>% 
+  filter(!is.na(SECCION))
+```
+
+
+
+
+# 8 - Graficamos los resultados en un mapa
+
+
+Teniendo los datos unificados, ahora con ayuda de *ggplot* podemos hace nuestros mapas temáticos. Vamos a ver que agrupación ganó en cada uno de los circuitos electorales en las elecciones PASO y luego vamos a hacer lo mismo con las elecciones generales. 
+
+```{r fig.align='center'}
+## Graficamos los datos de los ganadores de la eleccion PASO
+ggplot(data = circuitos, aes(fill = GANADOR_PASO)) +
+  geom_sf() +
+  scale_fill_manual(values = c("#18C2EC", "#FFFF33")) +
+  labs(title = "Elección PASO 2019", 
+       subtitle = "Tercera sección electoral. Ganadores por circuito electoral.",
+       caption = "Categoría: Presidente y vice-presidente. Fecha: 11-08-2019") +
+  theme(legend.position = c(0.1, 0.1), 
+        axis.text = element_blank(), 
+        axis.ticks = element_blank(), 
+        plot.background = element_blank(),
+        plot.title = element_text(hjust = 0.5), 
+        plot.subtitle = element_text(hjust = 0.5))
+```
+
+
+```{r fig.align='center'}
+## Graficamos los datos de los ganadores de la eleccion GRAL
+ggplot(data = circuitos, aes(fill = GANADOR_GENERAL)) +
+  geom_sf() +
+  scale_fill_manual(values = c("#18C2EC", "#FFFF33")) +
+  labs(title = "Elección general 2019", 
+       subtitle = "Tercera sección electoral. Ganadores por circuito electoral.",
+       caption = "Categoría: Presidente y vice-presidente. Fecha: 10-11-2019") +
+  theme(legend.position = c(0.1, 0.1), 
+        axis.text = element_blank(), 
+        axis.ticks = element_blank(), 
+        plot.background = element_blank(),
+        plot.title = element_text(hjust = 0.5), 
+        plot.subtitle = element_text(hjust = 0.5))
+```
