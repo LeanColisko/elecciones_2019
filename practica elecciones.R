@@ -1,5 +1,6 @@
 # 1 - Leemos los datos -------------------------- 
-# electorales para la tercera seccion electoral
+
+# Electorales para la tercera seccion electoral
 datos <- read.csv("https://raw.githubusercontent.com/LeanColisko/elecciones_2019/main/datos/elecciones_2019_datos_tercera_seccion.csv", fileEncoding = "UTF-8")
 
 
@@ -127,8 +128,7 @@ ganadores <- ganadores_gral %>%
 library(sf)
 
 # Datos del circuito electoral
-circuitos <- sf::read_sf("https://mapa2.electoral.gov.ar/geoserver/wfs?service=WFS&version=1.0.0&request=GetFeature&authkey=6f5439345ec2e15026534251f16a709a&typeName=descargas:circuito_02&maxFeatures=2000&outputFormat=application%2Fjson")
-
+circuitos <- read_sf("https://github.com/LeanColisko/elecciones_2019/raw/main/datos/circuitos_BsAs.geojson")
 
 
 library(ggplot2)
@@ -160,7 +160,3 @@ ggplot(data = circuitos, aes(fill = GANADOR_GENERAL)) +
        subtitle = "Categoría a Presidente. Ganador por circuito electoral.",
        caption = "Tercera sección electoral") +
   theme(legend.position = c(0.1, 0.1))
-
-
-
-

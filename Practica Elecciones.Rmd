@@ -176,8 +176,7 @@ head(ganadores)
 library(sf)
 
 # Datos del circuito electoral
-circuitos <- sf::read_sf("datos/circuitos_BsAs.geojson")
-
+circuitos <- read_sf("https://github.com/LeanColisko/elecciones_2019/raw/main/datos/circuitos_BsAs.geojson")
 head(circuitos)
 ```
 
